@@ -199,12 +199,12 @@ class AOW_WorkFlow extends Basic
     /**
      * Select and run all active flows for the specified bean
      */
-    function run_bean_flows(SugarBean &$bean)
+    public function run_bean_flows(SugarBean $bean)
     {
-        if (!isset($_REQUEST['module']) || $_REQUEST['module'] != 'Import') {
-//            $GLOBALS['log']->logLevel(print_r($bean));
-            $query = "SELECT id FROM aow_workflow WHERE aow_workflow.flow_module = '" . $bean->module_dir . "' AND aow_workflow.status = 'Active' AND (aow_workflow.run_when = 'Always' OR aow_workflow.run_when = 'On_Save' OR aow_workflow.run_when = 'Create') AND aow_workflow.deleted = 0 ";
-            $GLOBALS['log']->logLevel($query);
+        if (!defined('SUGARCRM_IS_INSTALLING') && (!isset($_REQUEST['module']) || $_REQUEST['module'] != 'Import')) {
+
+            $query = "SELECT id FROM aow_workflow WHERE aow_workflow.flow_module = '" . $bean->module_dir . "' AND aow_workflow.status = 'Active' AND (aow_workflow.run_when = 'Always' OR aow_workflow.run_when = 'On_Save' OR aow_workflow.run_when = 'Create') AND aow_workflow.deleted = 0 AND ( aow_workflow.process_id = '' OR aow_workflow.process_id IS NULL ) ";
+
             $result = $this->db->query($query, false);
             $flow = new AOW_WorkFlow();
             while (($row = $bean->db->fetchByAssoc($result)) != null) {
@@ -218,7 +218,9 @@ class AOW_WorkFlow extends Basic
                     $flow->run_actions($bean, true, $reason_number);
                 }
             }
+
         }
+
         return true;
     }
 
@@ -701,7 +703,6 @@ class AOW_WorkFlow extends Basic
                         }
                         break;
                 }
-                $GLOBALS['log']->logLevel($this->compare_condition($field, $value, $condition->operator));
                 $compare_result = $this->compare_condition($field, $value, $condition->operator);
                 $condition_compare_counter++;
                 if (!($compare_result)) {
@@ -739,7 +740,6 @@ class AOW_WorkFlow extends Basic
 
     function compare_condition($var1, $var2, $operator = 'Equal_To')
     {
-        $GLOBALS['log']->logLevel('comparing condition:var1=' . $var1 . ';var2=' . $var2 . ';operator=' . $operator);
         switch ($operator) {
             case "Not_Equal_To":
                 return $var1 != $var2;
@@ -754,8 +754,7 @@ class AOW_WorkFlow extends Basic
             case "Contains" :
                 return strpos($var1, $var2);
             case "Starts_With" :
-                return strncmp($var1, $var2, strlen($var2)) === 0/*return strrpos($var1,$var2, -strlen($var1))*/
-                    ;
+                return strncmp($var1, $var2, strlen($var2)) === 0; /*return strrpos($var1,$var2, -strlen($var1))*/
             case "Ends_With" :
                 return strpos($var1, $var2, strlen($var1) - strlen($var2));
             case "is_null":
@@ -791,10 +790,13 @@ class AOW_WorkFlow extends Basic
 
     /**
      * Run the actions against the passed $bean
+     * custom params:
+     * $is_subprocess - subprocess mark, TRUE if func called from check_subprocess()
+     * $subprocess_preffered_module - preffered relate_to_workflow module
      */
-    function run_actions(SugarBean &$bean, $in_save = false, $reason = 0)
+    function run_actions(SugarBean &$bean, $in_save = false, $reason = 0, $is_subprocess = false, $parent_record_module = '', $parent_record_id = '')
     {
-
+        global $beanList;
         require_once('modules/AOW_Processed/AOW_Processed.php');
         $processed = new AOW_Processed();
         if (!$this->multiple_runs) {
@@ -846,7 +848,7 @@ class AOW_WorkFlow extends Basic
 
 
                     $flow_action = new $action_name($action->id);
-                    if (!$flow_action->run_action($bean, unserialize(base64_decode($action->parameters)), $in_save)) {
+                    if (!$flow_action->run_action($bean, unserialize(base64_decode($action->parameters)), $in_save, $is_subprocess, $parent_record_module, $parent_record_id)) {
                         $pass = false;
                         $processed->aow_actions->add($action->id, array('status' => 'Failed'));
                     } else {
@@ -856,7 +858,7 @@ class AOW_WorkFlow extends Basic
 
             }
 
-            if($pass){
+            if ($pass) {
                 $processed->status = 'Complete';
 
                 //Кастом
@@ -864,7 +866,7 @@ class AOW_WorkFlow extends Basic
                 $subprocessBean = loadBean($parameters['record_type']);
                 $this->check_subprocess($subprocessBean);
 
-            }else{
+            } else {
                 $processed->status = 'Failed';
             }
             $processed->save(false);
