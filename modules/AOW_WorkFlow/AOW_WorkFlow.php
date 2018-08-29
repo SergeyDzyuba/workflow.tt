@@ -794,7 +794,7 @@ class AOW_WorkFlow extends Basic
      * $is_subprocess - subprocess mark, TRUE if func called from check_subprocess()
      * $subprocess_preffered_module - preffered relate_to_workflow module
      */
-    function run_actions(SugarBean &$bean, $in_save = false, $reason = 0, $is_subprocess = false, $parent_record_module = '', $parent_record_id = '')
+    function run_actions(SugarBean &$bean, $in_save = false, $reason = 0, $is_subprocess = false)
     {
         global $beanList;
         require_once('modules/AOW_Processed/AOW_Processed.php');
@@ -848,7 +848,37 @@ class AOW_WorkFlow extends Basic
 
 
                     $flow_action = new $action_name($action->id);
-                    if (!$flow_action->run_action($bean, unserialize(base64_decode($action->parameters)), $in_save, $is_subprocess, $parent_record_module, $parent_record_id)) {
+                    $action_params = unserialize(base64_decode($action->parameters));
+                    if (isset($this->process_id) && !empty($this->process_id) && isset($action_params['parent_module']) && !empty($action_params['parent_module'])) {// апгрейд: если субпроцесс и выбран элемент в выпадающем списке
+                        global $db;
+                        if ($action_params['parent_module'] !== 'default') {
+                            $is_subprocess = true;
+                            $parent_workflow_id = str_replace(' ','',$action_params['parent_module']);
+                            $query_module = "SELECT flow_module FROM aow_workflow WHERE aow_workflow.deleted=0 AND aow_workflow.status='Active' AND id='".$parent_workflow_id."'";
+                            $mod_res = $db->query($query_module);
+                            $parent_record_module = $db->fetchByAssoc($mod_res)['flow_module'];
+                            $parent_record_id_query = " SELECT
+                                      aow_processed.parent_id
+                                    FROM aow_processed
+                                    WHERE aow_processed.deleted = 0
+                                      AND aow_processed.status = 'Complete'
+                                      AND aow_processed.parent_type = '$parent_record_module'
+                                      AND aow_processed.aow_workflow_id = '$parent_workflow_id'
+                                    ORDER BY date_entered DESC
+                                    LIMIT 1";
+                            $parent_record_id_result = $db->query($parent_record_id_query);
+                            $parent_record_id = $db->fetchByAssoc($parent_record_id_result);
+                            $parent_record_id = $parent_record_id['parent_id'];
+                        }
+                        else {
+                            $is_subprocess = false;
+                            $parent_record_module = '';
+                            $parent_record_id = '';
+                        }
+                    }
+                    $created_record_id = $flow_action->run_action($bean, unserialize(base64_decode($action->parameters)), $in_save, $is_subprocess, $parent_record_module, $parent_record_id);
+//                    if (!$flow_action->run_action($bean, unserialize(base64_decode($action->parameters)), $in_save, $is_subprocess, $parent_record_module, $parent_record_id)) {
+                    if (!$created_record_id) {
                         $pass = false;
                         $processed->aow_actions->add($action->id, array('status' => 'Failed'));
                     } else {
@@ -862,14 +892,22 @@ class AOW_WorkFlow extends Basic
                 $processed->status = 'Complete';
 
                 //Кастом
-                $parameters = unserialize(base64_decode($action->parameters));
-                $subprocessBean = loadBean($parameters['record_type']);
-                $this->check_subprocess($subprocessBean);
+//                $parameters = unserialize(base64_decode($action->parameters));
+////                $subprocessBean = loadBean($parameters['record_type']);
+//                $subprocessBean = BeanFactory::getBean($parameters['record_type'], $created_record_id);
+//                $this->check_subprocess($subprocessBean);
 
             } else {
                 $processed->status = 'Failed';
             }
             $processed->save(false);
+
+            //Кустом
+            if ($processed->status === 'Complete') {
+                $parameters = unserialize(base64_decode($action->parameters));
+                $subprocessBean = BeanFactory::getBean($parameters['record_type'], $created_record_id);
+                $this->check_subprocess($subprocessBean);
+            }
 
             return $pass;
         }
@@ -880,7 +918,8 @@ class AOW_WorkFlow extends Basic
      * @param SugarBean $bean
      * @return bool
      */
-    public function check_subprocess(SugarBean $bean){
+    public function check_subprocess(SugarBean $bean)
+    {
         global $db;
 
         $query = "SELECT id FROM aow_workflow WHERE aow_workflow.flow_module = '" . $bean->module_dir . "' AND aow_workflow.status = 'Active' AND (aow_workflow.run_when = 'Always' OR aow_workflow.run_when = 'On_Save' OR aow_workflow.run_when = 'Create') AND aow_workflow.deleted = 0 AND ( aow_workflow.process_id != '' AND aow_workflow.process_id IS NOT NULL ) ORDER BY aow_workflow.date_entered, aow_workflow.process_id, aow_workflow.subprocess_sequence_number ";

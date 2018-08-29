@@ -40,6 +40,11 @@ $viewdefs ['AOW_WorkFlow'] =
                     ),
                 ),
                 'syncDetailEditViews' => false,
+                'includes' => array(
+                    0 => array(
+                        'file' => 'custom/modules/AOW_WorkFlow/js/process_id_field_listener.js'
+                    )
+                )
             ),
             'panels' =>
             array (

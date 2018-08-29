@@ -8,7 +8,6 @@ $app_list_strings['aow_alert_type_list'] = array(
     'primary' => 'Важное',
     'warning' => 'Предупреждение',
 );
-
 //$app_list_strings['aow_alert_to_list'] = array(
 //    'Specify User' => 'Выбрать пользователя',
 //    'Users' => 'Выбрать пользователей',

@@ -87,7 +87,6 @@ class AOW_Action extends Basic
 
     function save_lines($post_data, $parent, $key = '')
     {
-        $GLOBALS['log']->logLevel($post_data);
         $line_count = count($post_data[$key . 'action']);
         $j = 0;
         for ($i = 0; $i < $line_count; ++$i) {
