@@ -1,5 +1,5 @@
 /**
- * Advanced OpenWorkflow, Automating SugaremailM.
+     * Advanced OpenWorkflow, Automating SugaremailM.
  * @package Advanced OpenWorkflow for SugaremailM
  * @copyright SalesAgility Ltd http://www.salesagility.com
  *
@@ -103,7 +103,6 @@ function show_alertField(ln, cln, value){
 
     flow_module = document.getElementById('flow_module').value;
     var aow_alerttype = document.getElementById('aow_actions_param'+ln+'_alert_to_type'+cln).value;
-    console.log('alerttype:'+aow_alerttype)
     if(aow_alerttype != ''){
         var callback = {
             success: function(result) {
@@ -125,10 +124,13 @@ function show_alertField(ln, cln, value){
     }
 }
 
-function load_alertline(ln, to, target, value){
+// тип увеломления, пользователю или пользователям, айди юзверов, тема,ссылка, описание
+function load_alertline(ln, type, target, value, alert_name, alert_link, alert_message){
     cln = add_alertLine(ln);
-    document.getElementById("aow_actions_param"+ln+"_alert_to_type"+cln).value = to;
-    document.getElementById("aow_actions_param"+ln+"_alert_target_type"+cln).value = target;
+    document.getElementById("aow_actions_param"+ln+"_alert_to_type"+cln).value = type;
+    document.getElementById("aow_actions_param["+ln+"][alert_name]["+cln+"]").value = alert_name;//aow_actions_param[1][alert_name][0]
+    document.getElementById("aow_actions_param["+ln+"][alert_link]["+cln+"]").value = alert_link;//aow_actions_param[1][alert_link][0]
+    document.getElementById("aow_actions_param"+ln+"_alert_message"+cln).value = alert_message;//aow_actions_param1_alert_message0
     show_alertField(ln, cln, value);
 }
 
@@ -136,11 +138,10 @@ function add_alertLine(ln){
 
     var aow_alert_type_list = document.getElementById("aow_alert_type_list").value;
     var aow_alert_to_list = document.getElementById("aow_alert_to_list").value;
-    console.log(aow_alert_to_list);
     if(alertln[ln] == null){alertln[ln] = 0}
 
     tablebody = document.createElement("tbody");
-    tablebody.id = 'emailLine'+ln+'_body' + alertln[ln];
+    tablebody.id = 'alertLine'+ln+'_body' + alertln[ln];
     document.getElementById('alertLine'+ln+'_table').appendChild(tablebody);
     var x = tablebody.insertRow(-1);
     x.id = 'alertLine'+ln+'_line' + alertln[ln];

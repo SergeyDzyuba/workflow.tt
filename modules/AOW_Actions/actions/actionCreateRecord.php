@@ -88,7 +88,7 @@ class actionCreateRecord extends actionBase
                 translate('LBL_RELATE_PARENT_WORKFLOW', 'AOW_Actions') .
                 '</label>:<span class="required">
 *</span>&nbsp;&nbsp;';
-        $html .= "<select name='aow_actions_param[" . $line . "][parent_module]' id='aow_actions_param_parent_module" . $line . "'  onload='this.innerHTML=options;'></select></td>";
+        $html .= "<select name='aow_actions_param[" . $line . "][parent_module]' id='aow_actions_param_parent_module" . $line . "'><option value=\"default\" selected>Текущий модуль</option></select></td>";
         $html .= '</tr>';
         $html .= '<tr>';
         $html .= '<td colspan="4" scope="row"><table id="crLine' .

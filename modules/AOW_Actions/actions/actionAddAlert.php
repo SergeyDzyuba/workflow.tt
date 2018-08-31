@@ -66,7 +66,7 @@ class actionAddAlert extends actionBase
 //        if(isset($params['individual_alert']) && $params['individual_alert']) $checked = 'CHECKED';
 
 
-        $html .= "<table border='0' cellpadding='0' cellspacing='0' width='100%' data-workflow-action='send-email'>";
+        $html .= "<table border='0' cellpadding='0' cellspacing='0' width='100%' data-workflow-action='send-email'>";//data-workflow-action='send-email'
         $html .= "<tr>";
 //        $html .= '<td id="relate_label" scope="row" valign="top"><label>' . translate("LBL_INDIVIDUAL_ALERTS",
 //                "AOW_Actions") . ':</label>';
@@ -89,28 +89,36 @@ class actionAddAlert extends actionBase
 
         $html .= "<script id ='aow_script" . $line . "'>";
 
-        //backward compatible
-        if (isset($params['email_target_type']) && !is_array($params['email_target_type'])) {
-            $email = '';
-            switch ($params['email_target_type']) {
-                case 'Email Address':
-                    $email = $params['email'];
-                    break;
+        //backward compatible для имейлов было: КОГДА ОДНА СТРОКА
+//        if (isset($params['alert_to_type']) && !is_array($params['alert_to_type'])) {
+//            $alert = $params['alert'];
+////            switch ($params['alert_target_type']) {
+////                case 'Specify User':
+////                    $alert = $params['email_user_id'];
+////                    break;
+////            }
+////            $alert = $params['alert_target_type'];
+//            $html .= "load_alertline('" . $line . "','to','" . $params['alert_target_type'] . "','" . $alert . "');";
+//        }
+
+        if (isset($params['alert_to_type']) && !is_array($params['alert_to_type'])) {
+            $alert = '';
+            switch ($params['alert_target_type']) {
                 case 'Specify User':
-                    $email = $params['email_user_id'];
-                    break;
-                case 'Related Field':
-                    $email = $params['email_target'];
+                    $alert = $params['email_user_id'];
                     break;
             }
-            $html .= "load_emailline('" . $line . "','to','" . $params['email_target_type'] . "','" . $email . "');";
+            $html .= "load_alertline('" . $line . "','" . $params['alert_target_type'] . "','" . $params['alert_to_type'] . "','" . $alert . "');";
         }
-        //end backward compatible
 
-        if (isset($params['email_target_type'])) {
-            foreach ($params['email_target_type'] as $key => $field) {
-                if (is_array($params['email'][$key])) $params['email'][$key] = json_encode($params['email'][$key]);
-                $html .= "load_emailline('" . $line . "','" . $params['email_to_type'][$key] . "','" . $params['email_target_type'][$key] . "','" . $params['email'][$key] . "');";
+        //end backward compatible
+        // для имейла: если передан массив юзеров, кому будет отправлено мыло
+
+        if (isset($params['alert_to_type'])) {
+            foreach ($params['alert_target_type'] as $key => $field) {
+                if (is_array($params['alert'][$key])) $params['alert'][$key] = json_encode($params['alert'][$key]);
+                $html .= "load_alertline('" . $line . "','" . $params['alert_to_type'][$key] . "','" . $params['alert_target_type'][$key] . "','" . $params['alert'][$key]
+                    . "','" . $params['alert_name'][$key] . "','" . $params['alert_link'][$key] . "','" . $params['alert_message'][$key] . "');";
             }
         }
         $html .= "</script>";
@@ -257,23 +265,58 @@ class actionAddAlert extends actionBase
 
     public function run_action(SugarBean $bean, $params = array(), $in_save = false)
     {
-        global $beanList;
-        $records = array();
-        $record = BeanFactory::newBean('Alerts');
-        $GLOBALS['log']->logLevel($params);
-        if (isset($params['alert_target_type']) && !empty($params['alert_target_type'])){
-            foreach ($params['alert_target_type'] as $key=>$alert_type){
-                $record->name = $params['alert_name'][$key];
-                $record->description = $params['alert_message'][$key];
-                $record->url_redirect = $params['alert_link'][$key];
+//        $record = BeanFactory::newBean('Alerts');
+        if (isset($params['alert_target_type']) && !empty($params['alert_target_type'])) {
+            foreach ($params['alert_target_type'] as $key => $alert_type) {
+                if (!is_array($params['alert'][$key])) {
+                    $record = BeanFactory::newBean('Alerts');
+                    $record->name = $params['alert_name'][$key];
+                    $record->description = $params['alert_message'][$key];
+                    $record->url_redirect = $params['alert_link'][$key];
 //                $record->target_module = 'Account';
-                $record->assigned_user_id = $params['alert'][$key];
-                $record->type = $params['alert_type'][$key];
-                $record->is_read = 0;
-                $record->save();
+                    $record->assigned_user_id = $params['alert'][$key];
+                    $record->type = $params['alert_target_type'][$key];
+                    $record->is_read = 0;
+                    $record->save();
+                }
+                else {
+                    switch ($params['alert'][$key][0]){
+                        case 'all':
+                            $users = get_user_array(false);
+                            $GLOBALS['log']->logLevel($users);
+                            foreach ($users as $u_id => $u_name){
+                                $record = BeanFactory::newBean('Alerts');
+                                $record->name = $params['alert_name'][$key];
+                                $record->description = $params['alert_message'][$key];
+                                $record->url_redirect = $params['alert_link'][$key];
+//                $record->target_module = 'Account';
+                                $record->assigned_user_id = $u_id;
+                                $record->type = $params['alert_target_type'][$key];
+                                $record->is_read = 0;
+                                $record->save();
+                            }
+                            break;
+                        case 'security_group':
+                        case 'role':
+                            foreach ($params['alert'][$key] as $k => $v){
+                                if ($k === 0 || empty($v)){
+                                    continue;
+                                }
+                                $record = BeanFactory::newBean('Alerts');
+                                $record->name = $params['alert_name'][$key];
+                                $record->description = $params['alert_message'][$key];
+                                $record->url_redirect = $params['alert_link'][$key];
+//                $record->target_module = 'Account';
+                                $record->assigned_user_id = $v;
+                                $record->type = $params['alert_target_type'][$key];
+                                $record->is_read = 0;
+                                $record->save();
+                            }
+                            break;
+                    }
+                }
             }
         }
-//        $this->set_relationships($record, $bean, $params);
 
         return true;
 

@@ -121,15 +121,15 @@ EOS;
             $linkedBeans = $bean->get_linked_beans($field['name'],$field['module']);
             if($linkedBeans){
                 foreach($linkedBeans as $linkedBean){
-                    $this->set_record($linkedBean, $bean, $params, false);
+                    $record_id = $this->set_record($linkedBean, $bean, $params, false);
                     $this->set_relationships($linkedBean, $bean, $params);
                 }
             }
         } else {
-            $this->set_record($bean, $bean, $params, $in_save);
+            $record_id = $this->set_record($bean, $bean, $params, $in_save);
             $this->set_relationships($bean, $bean, $params);
         }
-        return true;
+        return $record_id;
     }
 
 

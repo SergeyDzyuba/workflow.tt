@@ -4,7 +4,7 @@ $app_list_strings['aow_process_status_list']['Uncomplete'] = 'Не запуще�
 $app_list_strings['aow_alert_type_list'] = array(
     'info' => 'Информационное',
     'danger' => 'Опасность',
-    'success' => 'Успех??',
+    'success' => 'Успех',
     'primary' => 'Важное',
     'warning' => 'Предупреждение',
 );
@@ -37,4 +37,13 @@ $GLOBALS['app_list_strings']['subprocess_sequence_number_list']=array (
   18 => '18',
   19 => '19',
   20 => '20',
+);
+
+$app_list_strings['contact_status_list'] = array(
+    'new' => 'Новый',
+    'discussion' => 'Переговоры',
+    'conclusion' => 'Заключение договора',
+    'sale_done' => 'Продажа состоялась',
+    'freezed' => 'Заморожен',
+    'repeat' => 'Повторная продажа',
 );

@@ -212,10 +212,10 @@ class AOW_WorkFlow extends Basic
                 $check_valid_bean_result = $flow->check_valid_bean($bean);
                 if ($check_valid_bean_result === true) {
                     $flow->run_actions($bean, true);
-                } else {
-                    $condition_num = explode('condition=', $check_valid_bean_result);
-                    $reason_number = $condition_num[1];
-                    $flow->run_actions($bean, true, $reason_number);
+                } else if (gettype($check_valid_bean_result) !== 'boolean'){
+//                    $condition_num = explode('condition=', $check_valid_bean_result);
+//                    $reason_number = $condition_num[1];
+                    $flow->run_actions($bean, true, $check_valid_bean_result);
                 }
             }
 
@@ -707,7 +707,7 @@ class AOW_WorkFlow extends Basic
                 $condition_compare_counter++;
                 if (!($compare_result)) {
 //                    return false;
-                    return 'false// condition=' . $condition_compare_counter;
+                    return $condition_compare_counter;
                 }
             }
         }
@@ -738,8 +738,7 @@ class AOW_WorkFlow extends Basic
         return true;
     }
 
-    function compare_condition($var1, $var2, $operator = 'Equal_To')
-    {
+    function compare_condition($var1, $var2, $operator = 'Equal_To'){
         switch ($operator) {
             case "Not_Equal_To":
                 return $var1 != $var2;
@@ -818,6 +817,7 @@ class AOW_WorkFlow extends Basic
             return true;
         } else {
             $processed->status = 'Running';
+            $processed->condition_number = '';
             $processed->save(false);
             $processed->load_relationship('aow_actions');
 
@@ -849,12 +849,12 @@ class AOW_WorkFlow extends Basic
 
                     $flow_action = new $action_name($action->id);
                     $action_params = unserialize(base64_decode($action->parameters));
-                    if (isset($this->process_id) && !empty($this->process_id) && isset($action_params['parent_module']) && !empty($action_params['parent_module'])) {// апгрейд: если субпроцесс и выбран элемент в выпадающем списке
+                    if (isset($this->process_id) && !empty($this->process_id) && isset($action_params['parent_module']) && !empty($action_params['parent_module'])) {
                         global $db;
                         if ($action_params['parent_module'] !== 'default') {
                             $is_subprocess = true;
-                            $parent_workflow_id = str_replace(' ','',$action_params['parent_module']);
-                            $query_module = "SELECT flow_module FROM aow_workflow WHERE aow_workflow.deleted=0 AND aow_workflow.status='Active' AND id='".$parent_workflow_id."'";
+                            $parent_workflow_id = str_replace(' ', '', $action_params['parent_module']);
+                            $query_module = "SELECT flow_module FROM aow_workflow WHERE aow_workflow.deleted=0 AND aow_workflow.status='Active' AND id='" . $parent_workflow_id . "'";
                             $mod_res = $db->query($query_module);
                             $parent_record_module = $db->fetchByAssoc($mod_res)['flow_module'];
                             $parent_record_id_query = " SELECT
@@ -869,8 +869,7 @@ class AOW_WorkFlow extends Basic
                             $parent_record_id_result = $db->query($parent_record_id_query);
                             $parent_record_id = $db->fetchByAssoc($parent_record_id_result);
                             $parent_record_id = $parent_record_id['parent_id'];
-                        }
-                        else {
+                        } else {
                             $is_subprocess = false;
                             $parent_record_module = '';
                             $parent_record_id = '';
@@ -890,7 +889,7 @@ class AOW_WorkFlow extends Basic
 
             if ($pass) {
                 $processed->status = 'Complete';
-
+                $processed->condition_number = '';
                 //Кастом
 //                $parameters = unserialize(base64_decode($action->parameters));
 ////                $subprocessBean = loadBean($parameters['record_type']);
@@ -903,10 +902,12 @@ class AOW_WorkFlow extends Basic
             $processed->save(false);
 
             //Кустом
-            if ($processed->status === 'Complete') {
+            if ($processed->status === 'Complete' && gettype($created_record_id) !== 'boolean') {
                 $parameters = unserialize(base64_decode($action->parameters));
                 $subprocessBean = BeanFactory::getBean($parameters['record_type'], $created_record_id);
-                $this->check_subprocess($subprocessBean);
+                if ($subprocessBean) {
+                    $this->check_subprocess($subprocessBean);
+                }
             }
 
             return $pass;
@@ -923,7 +924,6 @@ class AOW_WorkFlow extends Basic
         global $db;
 
         $query = "SELECT id FROM aow_workflow WHERE aow_workflow.flow_module = '" . $bean->module_dir . "' AND aow_workflow.status = 'Active' AND (aow_workflow.run_when = 'Always' OR aow_workflow.run_when = 'On_Save' OR aow_workflow.run_when = 'Create') AND aow_workflow.deleted = 0 AND ( aow_workflow.process_id != '' AND aow_workflow.process_id IS NOT NULL ) ORDER BY aow_workflow.date_entered, aow_workflow.process_id, aow_workflow.subprocess_sequence_number ";
-
         $result = $db->query($query, false);
         $flow = new AOW_WorkFlow();
         while (($row = $db->fetchByAssoc($result)) != null) {

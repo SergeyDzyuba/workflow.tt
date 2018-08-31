@@ -39,7 +39,7 @@ function getCustomSelectOptions($workflow_id)
         return $html;
     }
     else {
-        return '<option value="default">Текущий модуль</option>';
+        return '';
     }
 }
 
