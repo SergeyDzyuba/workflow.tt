@@ -47,3 +47,14 @@ $app_list_strings['contact_status_list'] = array(
     'freezed' => 'Заморожен',
     'repeat' => 'Повторная продажа',
 );
+
+$app_list_strings['aow_date_type_list'] = array(
+    '' => '',
+    'minute' => 'минут',
+    'hour' => 'часов',
+    'day' => 'дней',
+    'week' => 'недель',
+    'month' => 'месяцев',
+    'year' => 'лет',
+    'business_hours' => 'рабочих часов',
+);
